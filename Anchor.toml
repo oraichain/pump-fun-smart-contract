@@ -6,7 +6,7 @@ seeds = true
 skip-lint = false
 
 [programs.localnet]
-pump = "7iv4BWBhTBU6fRQrtogzEWfgE2inHz53AujdfPk9riC6"
+pump = "FLFGbCf9hiMZceaEp1P1KNzJJFQLyvQCPriMsBygUP1Y"
 
 [registry]
 url = "http://localhost:8899"
@@ -16,9 +16,11 @@ cluster = "Localnet"
 wallet = "./id.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+test = "yarn run ts-mocha -p ./tsconfig.json --bail -t 1000000 tests/**/*.ts"
+test-swap = "yarn run ts-mocha -p ./tsconfig.json --bail -t 1000000 tests/**/*.ts -g Swap Token"
+build-with-diff-target = "anchor build && cp $HOME/.cargo/target/sbf-solana-solana/release/pump.so $PWD/target/deploy/pump.so"
 
 [test]
-startup_wait = 10000
+startup_wait = 20000
 shutdown_wait = 2000
 upgradeable = false

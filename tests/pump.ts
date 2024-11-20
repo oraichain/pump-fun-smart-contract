@@ -1,22 +1,39 @@
-import * as anchor from '@coral-xyz/anchor';
-import { Program } from '@coral-xyz/anchor';
-import { Pump } from '../target/types/pump';
-import { PublicKey, Keypair, SystemProgram, Transaction, sendAndConfirmTransaction, ComputeBudgetProgram, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
-import { createMint, getOrCreateAssociatedTokenAccount, mintTo, getAssociatedTokenAddress } from '@solana/spl-token';
-import { BN } from 'bn.js';
-import key1 from './keys/user1.json';
-import key2 from './keys/user2.json';
-import { ASSOCIATED_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@coral-xyz/anchor/dist/cjs/utils/token';
-import { simulateTransaction } from '@coral-xyz/anchor/dist/cjs/utils/rpc';
+import * as anchor from "@coral-xyz/anchor";
+import { Program } from "@coral-xyz/anchor";
+import { Pump } from "../target/types/pump";
+import {
+  PublicKey,
+  Keypair,
+  SystemProgram,
+  Transaction,
+  sendAndConfirmTransaction,
+  ComputeBudgetProgram,
+  SYSVAR_RENT_PUBKEY,
+} from "@solana/web3.js";
+import {
+  createMint,
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
+  getAssociatedTokenAddress,
+} from "@solana/spl-token";
+import { BN } from "bn.js";
+import key1 from "./keys/user1.json";
+import key2 from "./keys/user2.json";
+import {
+  ASSOCIATED_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+} from "@coral-xyz/anchor/dist/cjs/utils/token";
+import { simulateTransaction } from "@coral-xyz/anchor/dist/cjs/utils/rpc";
+import { assert, expect } from "chai";
 
 anchor.setProvider(anchor.AnchorProvider.env());
 
 const connection = anchor.getProvider().connection;
-const curveSeed = 'CurveConfiguration';
-const POOL_SEED_PREFIX = 'liquidity_pool';
-const LP_SEED_PREFIX = 'LiqudityProvider';
+const curveSeed = "CurveConfiguration";
+const POOL_SEED_PREFIX = "liquidity_pool";
+const LP_SEED_PREFIX = "LiqudityProvider";
 
-describe('pump', () => {
+describe("pump", () => {
   const program = anchor.workspace.Pump as Program<Pump>;
 
   // custom setting
@@ -26,7 +43,7 @@ describe('pump', () => {
   const amount = new BN(1000000000).mul(new BN(10 ** tokenDecimal));
   console.log(BigInt(amount.toString()));
   console.log(BigInt(amount.toString()).toString());
-  console.log('🚀 ~ describe ~ amount:', amount.toString());
+  console.log("🚀 ~ describe ~ amount:", amount.toString());
 
   let mint1: PublicKey;
   let tokenAta1: PublicKey;
@@ -36,79 +53,119 @@ describe('pump', () => {
 
   console.log("Admin's wallet address is : ", user.publicKey.toBase58());
 
-  it('Airdrop to admin wallet', async () => {
-    console.log(`Requesting airdrop to admin for 1SOL : ${user.publicKey.toBase58()}`);
+  it("Airdrop to admin wallet", async () => {
+    console.log(
+      `Requesting airdrop to admin for 1SOL : ${user.publicKey.toBase58()}`
+    );
     await airdrop(user.publicKey);
     await airdrop(user2.publicKey);
-    console.log('admin wallet balance : ', (await connection.getBalance(user.publicKey)) / 10 ** 9, 'SOL');
+    const adminBalance =
+      (await connection.getBalance(user.publicKey)) / 10 ** 9;
+    console.log("admin wallet balance : ", adminBalance, "SOL");
+    assert.isAbove(adminBalance, 0);
   });
 
-  it('Mint token1 to user wallet', async () => {
+  it("Mint token1 to user wallet", async () => {
     console.log("Trying to create and mint token1 to user's wallet");
 
+    mint1 = await createMint(
+      connection,
+      user,
+      user.publicKey,
+      user.publicKey,
+      tokenDecimal
+    );
+    console.log("mint1 address: ", mint1.toBase58()); // 6uK5MT2i8aRGYYXrD4DyctZKwYuu91oiRd6r75SJ1kK3
+    tokenAta1 = (
+      await getOrCreateAssociatedTokenAccount(
+        connection,
+        user,
+        mint1,
+        user.publicKey
+      )
+    ).address;
+    console.log("token1 account address: ", tokenAta1.toBase58()); //G4EG27JDoyrgdS3ZJenVypePdgZMtNgDiuyYZbMJiVwm
     try {
-      mint1 = await createMint(connection, user, user.publicKey, user.publicKey, tokenDecimal);
-      console.log('mint1 address: ', mint1.toBase58()); // 6uK5MT2i8aRGYYXrD4DyctZKwYuu91oiRd6r75SJ1kK3
-      tokenAta1 = (await getOrCreateAssociatedTokenAccount(connection, user, mint1, user.publicKey)).address;
-      console.log('token1 account address: ', tokenAta1.toBase58()); //G4EG27JDoyrgdS3ZJenVypePdgZMtNgDiuyYZbMJiVwm
-      try {
-        //minting 100 new tokens to the token address we just created
-        await mintTo(connection, user, mint1, tokenAta1, user.publicKey, BigInt(amount.toString()));
-      } catch (error) {
-        console.log('🚀 ~ here:', error);
-      }
-      const tokenBalance = await connection.getTokenAccountBalance(tokenAta1);
-      console.log('tokenBalance1 in user:', tokenBalance.value.uiAmount);
-      console.log('token 1 successfully minted');
-    } catch (error) {
-      console.log('Token 1 creation error \n', error);
-    }
-  });
-
-  it('Mint token 2 to user wallet', async () => {
-    console.log("Trying to create and mint token 2 to user's wallet");
-    try {
-      mint2 = await createMint(connection, user, user.publicKey, user.publicKey, tokenDecimal);
-      console.log('mint 2 address: ', mint2.toBase58());
-
-      tokenAta2 = (await getOrCreateAssociatedTokenAccount(connection, user, mint2, user.publicKey)).address;
-      console.log('token 2 account address: ', tokenAta2.toBase58());
-
-      await mintTo(connection, user, mint2, tokenAta2, user.publicKey, BigInt(amount.toString()));
-      const tokenBalance = await connection.getTokenAccountBalance(tokenAta2);
-      console.log('token 2 Balance in user:', tokenBalance.value.uiAmount);
-      console.log('token 2 successfully minted');
-    } catch (error) {
-      console.log('Token 2 creation error \n', error);
-    }
-  });
-
-  it('Initialize the contract', async () => {
-    try {
-      const [curveConfig] = PublicKey.findProgramAddressSync([Buffer.from(curveSeed)], program.programId);
-      const tx = new Transaction().add(
-        ComputeBudgetProgram.setComputeUnitLimit({ units: 10_000 }),
-        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1200_000 }),
-        await program.methods
-          .initialize(1)
-          .accounts({
-            dexConfigurationAccount: curveConfig,
-            admin: user.publicKey,
-            rent: SYSVAR_RENT_PUBKEY,
-            systemProgram: SystemProgram.programId
-          })
-          .instruction()
+      //minting 100 new tokens to the token address we just created
+      await mintTo(
+        connection,
+        user,
+        mint1,
+        tokenAta1,
+        user.publicKey,
+        BigInt(amount.toString())
       );
-      tx.feePayer = user.publicKey;
-      tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-      // console.log(await connection.simulateTransaction(tx))
-      const sig = await sendAndConfirmTransaction(connection, tx, [user], { skipPreflight: true });
-      console.log('Successfully initialized : ', sig);
-      let pool = await program.account.curveConfiguration.fetch(curveConfig);
-      console.log('Pool State : ', pool);
     } catch (error) {
-      console.log('Error in initialization :', error);
+      console.log("🚀 ~ here:", error);
     }
+    const tokenBalance = await connection.getTokenAccountBalance(tokenAta1);
+    console.log("tokenBalance1 in user:", tokenBalance.value.uiAmount);
+    console.log("token 1 successfully minted");
+    assert.strictEqual(tokenBalance.value.uiAmount, 10 ** 9);
+  });
+
+  it("Mint token 2 to user wallet", async () => {
+    console.log("Trying to create and mint token 2 to user's wallet");
+    mint2 = await createMint(
+      connection,
+      user,
+      user.publicKey,
+      user.publicKey,
+      tokenDecimal
+    );
+    console.log("mint 2 address: ", mint2.toBase58());
+
+    tokenAta2 = (
+      await getOrCreateAssociatedTokenAccount(
+        connection,
+        user,
+        mint2,
+        user.publicKey
+      )
+    ).address;
+    console.log("token 2 account address: ", tokenAta2.toBase58());
+
+    await mintTo(
+      connection,
+      user,
+      mint2,
+      tokenAta2,
+      user.publicKey,
+      BigInt(amount.toString())
+    );
+    const tokenBalance = await connection.getTokenAccountBalance(tokenAta2);
+    console.log("token 2 Balance in user:", tokenBalance.value.uiAmount);
+    console.log("token 2 successfully minted");
+    assert.equal(tokenBalance.value.uiAmount, 10 ** 9);
+  });
+
+  it("Initialize the contract", async () => {
+    const [curveConfig] = PublicKey.findProgramAddressSync(
+      [Buffer.from(curveSeed)],
+      program.programId
+    );
+    const tx = new Transaction().add(
+      ComputeBudgetProgram.setComputeUnitLimit({ units: 10_000 }),
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1200_000 }),
+      await program.methods
+        .initialize(1)
+        .accounts({
+          dexConfigurationAccount: curveConfig,
+          admin: user.publicKey,
+          rent: SYSVAR_RENT_PUBKEY,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction()
+    );
+    tx.feePayer = user.publicKey;
+    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    // console.log(await connection.simulateTransaction(tx))
+    const sig = await sendAndConfirmTransaction(connection, tx, [user], {
+      skipPreflight: true,
+    });
+    console.log("Successfully initialized : ", sig);
+    let pool = await program.account.curveConfiguration.fetch(curveConfig);
+    console.log("Pool State : ", pool);
   });
 
   // it('create pool', async () => {
@@ -149,12 +206,26 @@ describe('pump', () => {
   //   }
   // });
 
-  it('add liquidity', async () => {
+  it("add liquidity", async () => {
     try {
-      const [poolPda] = PublicKey.findProgramAddressSync([Buffer.from(POOL_SEED_PREFIX), mint1.toBuffer()], program.programId);
+      const [poolPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from(POOL_SEED_PREFIX), mint1.toBuffer()],
+        program.programId
+      );
 
-      const [liquidityProviderAccount] = PublicKey.findProgramAddressSync([Buffer.from(LP_SEED_PREFIX), poolPda.toBuffer(), user.publicKey.toBuffer()], program.programId);
-      const poolTokenOne = await getAssociatedTokenAddress(mint1, poolPda, true);
+      const [liquidityProviderAccount] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from(LP_SEED_PREFIX),
+          poolPda.toBuffer(),
+          user.publicKey.toBuffer(),
+        ],
+        program.programId
+      );
+      const poolTokenOne = await getAssociatedTokenAddress(
+        mint1,
+        poolPda,
+        true
+      );
       const userAta1 = await getAssociatedTokenAddress(mint1, user.publicKey);
 
       const tx = new Transaction().add(
@@ -172,38 +243,58 @@ describe('pump', () => {
             tokenProgram: TOKEN_PROGRAM_ID,
             associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
             rent: SYSVAR_RENT_PUBKEY,
-            systemProgram: SystemProgram.programId
+            systemProgram: SystemProgram.programId,
           })
           .instruction()
       );
       tx.feePayer = user.publicKey;
       tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
       // console.log(await connection.simulateTransaction(tx))
-      const sig = await sendAndConfirmTransaction(connection, tx, [user], { skipPreflight: true });
-      console.log('Successfully added liquidity : ', sig);
+      const sig = await sendAndConfirmTransaction(connection, tx, [user], {
+        skipPreflight: true,
+      });
+      console.log("Successfully added liquidity : ", sig);
 
       const signature = await connection.requestAirdrop(poolPda, 10 ** 9);
       // 2 - Fetch the latest blockhash
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      const { blockhash, lastValidBlockHeight } =
+        await connection.getLatestBlockhash();
       // 3 - Confirm transaction success
       await connection.confirmTransaction({
         blockhash,
         lastValidBlockHeight,
-        signature
+        signature,
       });
     } catch (error) {
-      console.log('Error in adding liquidity', error);
+      console.log("Error in adding liquidity", error);
     }
   });
 
-  it('Swap token', async () => {
+  it("Swap token", async () => {
     try {
-      const [curveConfig] = PublicKey.findProgramAddressSync([Buffer.from(curveSeed)], program.programId);
-      const [poolPda] = PublicKey.findProgramAddressSync([Buffer.from(POOL_SEED_PREFIX), mint1.toBuffer()], program.programId);
-      const poolTokenOne = await getAssociatedTokenAddress(mint1, poolPda, true);
+      const [curveConfig] = PublicKey.findProgramAddressSync(
+        [Buffer.from(curveSeed)],
+        program.programId
+      );
+      const [poolPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from(POOL_SEED_PREFIX), mint1.toBuffer()],
+        program.programId
+      );
+      const poolTokenOne = await getAssociatedTokenAddress(
+        mint1,
+        poolPda,
+        true
+      );
       const userAta1 = await getAssociatedTokenAddress(mint1, user.publicKey);
 
-      console.log('pooltoken one', poolTokenOne.toBase58(), 'program id', program.programId.toBase58(), 'userAta1', userAta1.toBase58());
+      console.log(
+        "pooltoken one",
+        poolTokenOne.toBase58(),
+        "program id",
+        program.programId.toBase58(),
+        "userAta1",
+        userAta1.toBase58()
+      );
 
       const tx = new Transaction().add(
         ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }),
@@ -220,27 +311,43 @@ describe('pump', () => {
             tokenProgram: TOKEN_PROGRAM_ID,
             associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
             rent: SYSVAR_RENT_PUBKEY,
-            systemProgram: SystemProgram.programId
+            systemProgram: SystemProgram.programId,
           })
           .instruction()
       );
       tx.feePayer = user.publicKey;
       tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-      console.log('recentBlockhash', tx.recentBlockhash);
-      console.log('simulate', await simulateTransaction(connection, tx));
-      const sig = await sendAndConfirmTransaction(connection, tx, [user], { skipPreflight: true });
+      console.log("recentBlockhash", tx.recentBlockhash);
+      console.log("simulate", await simulateTransaction(connection, tx));
+      const sig = await sendAndConfirmTransaction(connection, tx, [user], {
+        skipPreflight: true,
+      });
 
-      console.log('Successfully swapped : ', sig);
+      console.log("Successfully swapped : ", sig);
     } catch (error) {
-      console.log('Error in swap transaction', error);
+      console.log("Error in swap transaction", error);
     }
   });
 
-  it('Remove liquidity', async () => {
+  it("Remove liquidity", async () => {
     try {
-      const [poolPda] = PublicKey.findProgramAddressSync([Buffer.from(POOL_SEED_PREFIX), mint1.toBuffer()], program.programId);
-      const [liquidityProviderAccount] = PublicKey.findProgramAddressSync([Buffer.from(LP_SEED_PREFIX), poolPda.toBuffer(), user.publicKey.toBuffer()], program.programId);
-      const poolTokenOne = await getAssociatedTokenAddress(mint1, poolPda, true);
+      const [poolPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from(POOL_SEED_PREFIX), mint1.toBuffer()],
+        program.programId
+      );
+      const [liquidityProviderAccount] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from(LP_SEED_PREFIX),
+          poolPda.toBuffer(),
+          user.publicKey.toBuffer(),
+        ],
+        program.programId
+      );
+      const poolTokenOne = await getAssociatedTokenAddress(
+        mint1,
+        poolPda,
+        true
+      );
       const userAta1 = await getAssociatedTokenAddress(mint1, user.publicKey);
       const tx = new Transaction().add(
         ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }),
@@ -257,17 +364,19 @@ describe('pump', () => {
             tokenProgram: TOKEN_PROGRAM_ID,
             associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
             rent: SYSVAR_RENT_PUBKEY,
-            systemProgram: SystemProgram.programId
+            systemProgram: SystemProgram.programId,
           })
           .instruction()
       );
       tx.feePayer = user.publicKey;
       tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
       console.log(await connection.simulateTransaction(tx));
-      const sig = await sendAndConfirmTransaction(connection, tx, [user], { skipPreflight: true });
-      console.log('Successfully Removed liquidity : ', sig);
+      const sig = await sendAndConfirmTransaction(connection, tx, [user], {
+        skipPreflight: true,
+      });
+      console.log("Successfully Removed liquidity : ", sig);
     } catch (error) {
-      console.log('Error in removing liquidity', error);
+      console.log("Error in removing liquidity", error);
     }
   });
 });
@@ -287,18 +396,21 @@ function comparePublicKeys(pubkey1: PublicKey, pubkey2: PublicKey): number {
 }
 
 function generateSeed(tokenOne: PublicKey, tokenTwo: PublicKey): string {
-  return comparePublicKeys(tokenOne, tokenTwo) > 0 ? `${tokenOne.toString()}${tokenTwo.toString()}` : `${tokenTwo.toString()}${tokenOne.toString()}`;
+  return comparePublicKeys(tokenOne, tokenTwo) > 0
+    ? `${tokenOne.toString()}${tokenTwo.toString()}`
+    : `${tokenTwo.toString()}${tokenOne.toString()}`;
 }
 
 async function airdrop(publicKey: PublicKey) {
   // 1 - Request Airdrop
   const signature = await connection.requestAirdrop(publicKey, 10 ** 9);
   // 2 - Fetch the latest blockhash
-  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+  const { blockhash, lastValidBlockHeight } =
+    await connection.getLatestBlockhash();
   // 3 - Confirm transaction success
   await connection.confirmTransaction({
     blockhash,
     lastValidBlockHeight,
-    signature
+    signature,
   });
 }
