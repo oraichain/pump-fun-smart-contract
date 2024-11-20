@@ -38,8 +38,8 @@ describe('pump', () => {
 
   it('Airdrop to admin wallet', async () => {
     console.log(`Requesting airdrop to admin for 1SOL : ${user.publicKey.toBase58()}`);
-    await airdrop(user.publicKey);
-    await airdrop(user2.publicKey);
+    // await airdrop(user.publicKey);
+    // await airdrop(user2.publicKey);
     console.log('admin wallet balance : ', (await connection.getBalance(user.publicKey)) / 10 ** 9, 'SOL');
   });
 
@@ -182,15 +182,7 @@ describe('pump', () => {
       const sig = await sendAndConfirmTransaction(connection, tx, [user], { skipPreflight: true });
       console.log('Successfully added liquidity : ', sig);
 
-      const signature = await connection.requestAirdrop(poolPda, 10 ** 9);
-      // 2 - Fetch the latest blockhash
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-      // 3 - Confirm transaction success
-      await connection.confirmTransaction({
-        blockhash,
-        lastValidBlockHeight,
-        signature
-      });
+      await airdrop(poolPda);
     } catch (error) {
       console.log('Error in adding liquidity', error);
     }

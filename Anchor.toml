@@ -7,11 +7,14 @@ skip-lint = false
 [programs.localnet]
 pump = "7iv4BWBhTBU6fRQrtogzEWfgE2inHz53AujdfPk9riC6"
 
+[programs.devnet]
+pump = "7iv4BWBhTBU6fRQrtogzEWfgE2inHz53AujdfPk9riC6"
+
 [registry]
 url = "http://localhost:8899"
 
 [provider]
-cluster = "Localnet"
+cluster = "Devnet"
 wallet = "./id.json"
 
 [scripts]
