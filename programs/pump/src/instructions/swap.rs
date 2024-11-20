@@ -4,10 +4,7 @@ use anchor_spl::{
     token::{Mint, Token, TokenAccount},
 };
 
-use crate::{
-    errors::CustomError,
-    state::{CurveConfiguration, LiquidityPool, LiquidityPoolAccount},
-};
+use crate::state::{CurveConfiguration, LiquidityPool, LiquidityPoolAccount};
 
 pub fn swap(ctx: Context<Swap>, amount: u64, style: u64) -> Result<()> {
     let pool = &mut ctx.accounts.pool;
@@ -18,16 +15,16 @@ pub fn swap(ctx: Context<Swap>, amount: u64, style: u64) -> Result<()> {
         &mut *ctx.accounts.user_token_account_one,
     );
 
-    let token_two_accounts = (
-        &mut *ctx.accounts.mint_token_one.clone(),
-        &mut pool.to_account_info().clone(),
-        &mut ctx.accounts.user.clone()
-    );
+    // let token_two_accounts = (
+    //     &mut *ctx.accounts.mint_token_one.clone(),
+    //     &mut pool.to_account_info().clone(),
+    //     &mut ctx.accounts.user.clone(),
+    // );
 
     pool.swap(
         &*ctx.accounts.dex_configuration_account,
         token_one_accounts,
-        token_two_accounts,
+        // token_two_accounts,
         amount,
         style,
         &ctx.accounts.user,

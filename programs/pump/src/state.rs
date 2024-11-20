@@ -1,4 +1,3 @@
-use crate::consts::INITIAL_PRICE;
 use crate::errors::CustomError;
 use crate::utils::convert_from_float;
 use crate::utils::convert_to_float;
@@ -6,7 +5,6 @@ use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use anchor_spl::token::{self, Mint, Token, TokenAccount};
 use std::cmp;
-use std::ops::Add;
 use std::ops::Div;
 use std::ops::Mul;
 use std::ops::Sub;
@@ -42,7 +40,7 @@ impl LiquidityProvider {
 #[account]
 pub struct LiquidityPool {
     pub token_one: Pubkey, // Public key of the first token in the liquidity pool
-    pub token_two: Pubkey, // Public key of the second token in the pool
+    // pub token_two: Pubkey, // Public key of the second token in the pool, currently is sol native coin
     pub total_supply: u64, // Total supply of liquidity tokens
     pub reserve_one: u64,  // Reserve amount of token_one in the pool
     pub reserve_two: u64,  // Reserve amount of token_two in the pool
@@ -68,12 +66,12 @@ impl LiquidityPool {
     // Constructor to initialize a LiquidityPool with two tokens and a bump for the PDA
     pub fn new(token_one: Pubkey, bump: u8) -> Self {
         Self {
-            token_one: token_one,
-            token_two: token_one,
+            token_one,
+            // token_two: token_one,
             total_supply: 0_u64,
             reserve_one: 0_u64,
             reserve_two: 0_u64,
-            bump: bump,
+            bump,
         }
     }
 }
@@ -104,11 +102,6 @@ pub trait LiquidityPoolAccount<'info> {
             &mut Account<'info, TokenAccount>,
             &mut Account<'info, TokenAccount>,
         ),
-        token_two_accounts: (
-            &mut Account<'info, Mint>,
-            &mut AccountInfo<'info>,
-            &mut AccountInfo<'info>,
-        ),
         amount_one: u64,
         amount_two: u64,
         liquidity_provider_account: &mut Account<'info, LiquidityProvider>,
@@ -124,11 +117,6 @@ pub trait LiquidityPoolAccount<'info> {
             &mut Account<'info, TokenAccount>,
             &mut Account<'info, TokenAccount>,
         ),
-        token_two_accounts: (
-            &mut Account<'info, Mint>,
-            &mut AccountInfo<'info>,
-            &mut AccountInfo<'info>,
-        ),
         shares: u64,
         liquidity_provider_account: &mut Account<'info, LiquidityProvider>,
         authority: &Signer<'info>,
@@ -143,11 +131,11 @@ pub trait LiquidityPoolAccount<'info> {
             &mut Account<'info, TokenAccount>,
             &mut Account<'info, TokenAccount>,
         ),
-        token_two_accounts: (
-            &mut Account<'info, Mint>,
-            &mut AccountInfo<'info>,
-            &mut Signer<'info>,
-        ),
+        // token_two_accounts: (
+        //     &mut Account<'info, Mint>,
+        //     &mut AccountInfo<'info>,
+        //     &mut Signer<'info>,
+        // ),
         amount: u64,
         style: u64,
         authority: &Signer<'info>,
@@ -240,18 +228,13 @@ impl<'info> LiquidityPoolAccount<'info> for Account<'info, LiquidityPool> {
             &mut Account<'info, TokenAccount>,
             &mut Account<'info, TokenAccount>,
         ),
-        token_two_accounts: (
-            &mut Account<'info, Mint>,
-            &mut AccountInfo<'info>,
-            &mut AccountInfo<'info>,
-        ),
         amount_one: u64,
         amount_two: u64,
         liquidity_provider_account: &mut Account<'info, LiquidityProvider>,
         authority: &Signer<'info>,
         token_program: &Program<'info, Token>,
     ) -> Result<()> {
-        let mut shares_to_allocate = 0_u64;
+        let shares_to_allocate;
 
         if self.total_supply == 0 {
             let sqrt_shares = (convert_to_float(amount_one, token_one_accounts.0.decimals)
@@ -311,11 +294,6 @@ impl<'info> LiquidityPoolAccount<'info> for Account<'info, LiquidityPool> {
             &mut Account<'info, Mint>,
             &mut Account<'info, TokenAccount>,
             &mut Account<'info, TokenAccount>,
-        ),
-        token_two_accounts: (
-            &mut Account<'info, Mint>,
-            &mut AccountInfo<'info>,
-            &mut AccountInfo<'info>,
         ),
         shares: u64,
         liquidity_provider_account: &mut Account<'info, LiquidityProvider>,
@@ -381,11 +359,11 @@ impl<'info> LiquidityPoolAccount<'info> for Account<'info, LiquidityPool> {
             &mut Account<'info, TokenAccount>,
             &mut Account<'info, TokenAccount>,
         ),
-        token_two_accounts: (
-            &mut Account<'info, Mint>,
-            &mut AccountInfo<'info>,
-            &mut Signer<'info>,
-        ),
+        // token_two_accounts: (
+        //     &mut Account<'info, Mint>,
+        //     &mut AccountInfo<'info>,
+        //     &mut Signer<'info>,
+        // ),
         amount: u64,
         style: u64,
         authority: &Signer<'info>,
@@ -396,12 +374,7 @@ impl<'info> LiquidityPoolAccount<'info> for Account<'info, LiquidityPool> {
             return err!(CustomError::InvalidAmount);
         }
         msg!("Mint: {:?} ", token_one_accounts.0.key());
-        msg!(
-            "Swap: {:?} {:?} {:?}",
-            authority.key(),
-            style,
-            amount
-        );
+        msg!("Swap: {:?} {:?} {:?}", authority.key(), style, amount);
 
         // xy = k => Constant product formula
         // (x + dx)(y - dy) = k
@@ -443,7 +416,7 @@ impl<'info> LiquidityPoolAccount<'info> for Account<'info, LiquidityPool> {
                 .ok_or(CustomError::OverflowOrUnderflowOccurred)?;
 
             self.update_reserves(new_reserves_one, new_reserves_two)?;
-            msg!{"Reserves: {:?} {:?}", new_reserves_one, new_reserves_two}
+            msg! {"Reserves: {:?} {:?}", new_reserves_one, new_reserves_two}
             self.transfer_token_to_pool(
                 token_one_accounts.2,
                 token_one_accounts.1,
@@ -451,10 +424,12 @@ impl<'info> LiquidityPoolAccount<'info> for Account<'info, LiquidityPool> {
                 authority,
                 token_program,
             )?;
-           
+
             self.transfer_sol_from_pool(
-                token_two_accounts.2,
-                token_two_accounts.1,
+                // token_two_accounts.2,
+                authority,
+                // token_two_accounts.1,
+                &self.to_account_info(),
                 amount_out,
                 system_program,
             )?;
@@ -481,10 +456,10 @@ impl<'info> LiquidityPoolAccount<'info> for Account<'info, LiquidityPool> {
                 .reserve_two
                 .checked_add(amount)
                 .ok_or(CustomError::OverflowOrUnderflowOccurred)?;
-            
+
             self.update_reserves(new_reserves_one, new_reserves_two)?;
-            
-            msg!{"Reserves: {:?} {:?}", new_reserves_one, new_reserves_two}
+
+            msg! {"Reserves: {:?} {:?}", new_reserves_one, new_reserves_two}
             self.transfer_token_from_pool(
                 token_one_accounts.1,
                 token_one_accounts.2,
@@ -493,8 +468,10 @@ impl<'info> LiquidityPoolAccount<'info> for Account<'info, LiquidityPool> {
             )?;
 
             self.transfer_sol_to_pool(
-                token_two_accounts.2,
-                token_two_accounts.1,
+                // token_two_accounts.2,
+                authority,
+                // token_two_accounts.1,
+                &self.to_account_info(),
                 amount,
                 system_program,
             )?;

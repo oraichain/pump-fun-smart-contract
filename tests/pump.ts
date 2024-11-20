@@ -1,46 +1,45 @@
-import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
-import { Pump } from "../target/types/pump"
-import { Connection, PublicKey, Keypair, SystemProgram, Transaction, sendAndConfirmTransaction, ComputeBudgetProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js"
-import { createMint, getOrCreateAssociatedTokenAccount, mintTo, getAssociatedTokenAddress } from "@solana/spl-token"
-import { expect } from "chai";
-import { BN } from "bn.js";
-import keys from '../keys/users.json'
-import key2 from '../keys/user2.json'
-import { ASSOCIATED_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/utils/token";
+import * as anchor from '@coral-xyz/anchor';
+import { Program } from '@coral-xyz/anchor';
+import { Pump } from '../target/types/pump';
+import { Connection, PublicKey, Keypair, SystemProgram, Transaction, sendAndConfirmTransaction, ComputeBudgetProgram, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
+import { createMint, getOrCreateAssociatedTokenAccount, mintTo, getAssociatedTokenAddress } from '@solana/spl-token';
+import { expect } from 'chai';
+import { BN } from 'bn.js';
+import keys from './keys/users.json';
+import key2 from './keys/user2.json';
+import { ASSOCIATED_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@coral-xyz/anchor/dist/cjs/utils/token';
 
 // const connection = new Connection("https://api.devnet.solana.com")
-const connection = new Connection("http://localhost:8899")
-const curveSeed = "CurveConfiguration"
-const POOL_SEED_PREFIX = "liquidity_pool"
-const LP_SEED_PREFIX = "LiqudityProvider"
+const connection = new Connection('http://localhost:8899');
+const curveSeed = 'CurveConfiguration';
+const POOL_SEED_PREFIX = 'liquidity_pool';
+const LP_SEED_PREFIX = 'LiqudityProvider';
 
 function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-describe("pump", () => {
+describe('pump', () => {
   anchor.setProvider(anchor.AnchorProvider.env());
 
   const program = anchor.workspace.Pump as Program<Pump>;
 
+  // custom setting
+  const user = Keypair.fromSecretKey(new Uint8Array(keys));
+  const user2 = Keypair.fromSecretKey(new Uint8Array(key2));
+  const tokenDecimal = 6;
+  const amount = new BN(1000000000).mul(new BN(10 ** tokenDecimal));
+  console.log(BigInt(amount.toString()));
+  console.log(BigInt(amount.toString()).toString());
+  console.log('🚀 ~ describe ~ amount:', amount.toString());
 
-  // custom setting 
-  const user = Keypair.fromSecretKey(new Uint8Array(keys))
-  const user2 = Keypair.fromSecretKey(new Uint8Array(key2))
-  const tokenDecimal = 6
-  const amount = new BN(1000000000).mul(new BN(10 ** tokenDecimal))
-  console.log(BigInt(amount.toString()))
-  console.log(BigInt(amount.toString()).toString())
-  console.log("🚀 ~ describe ~ amount:", amount.toString())
-
-  let mint1: PublicKey
-  let tokenAta1: PublicKey
+  let mint1: PublicKey;
+  let tokenAta1: PublicKey;
 
   // let mint2: PublicKey
   // let tokenAta2: PublicKey
 
-  console.log("Admin's wallet address is : ", user.publicKey.toBase58())
+  console.log("Admin's wallet address is : ", user.publicKey.toBase58());
 
   // it("Airdrop to admin wallet", async () => {
   //   console.log(`Requesting airdrop to admin for 1SOL : ${user.publicKey.toBase58()}`)
@@ -99,7 +98,7 @@ describe("pump", () => {
   //   } catch (error) {
   //     console.log("Token 1 creation error \n", error)
   //   }
-     
+
   // })
 
   // it("Mint token 2 to user wallet", async () => {
@@ -154,7 +153,7 @@ describe("pump", () => {
 
   // it("create pool", async () => {
   //   try {
-      
+
   //     const [poolPda] = PublicKey.findProgramAddressSync(
   //       [Buffer.from(POOL_SEED_PREFIX), mint1.toBuffer(), mint2.toBuffer()],
   //       program.programId
@@ -208,13 +207,12 @@ describe("pump", () => {
 
   // it("add liquidity", async () => {
   //   try {
-      
+
   //     const [poolPda] = PublicKey.findProgramAddressSync(
   //       [Buffer.from(POOL_SEED_PREFIX), mint1.toBuffer()],
   //       program.programId
   //     )
-      
-      
+
   //     const [liquidityProviderAccount] = PublicKey.findProgramAddressSync(
   //       [Buffer.from(LP_SEED_PREFIX), poolPda.toBuffer(), user.publicKey.toBuffer()],
   //       program.programId
@@ -225,7 +223,7 @@ describe("pump", () => {
   //     const userAta1 = await getAssociatedTokenAddress(
   //       mint1, user.publicKey
   //     )
-      
+
   //     const tx = new Transaction()
   //       .add(
   //         ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }),
@@ -270,60 +268,47 @@ describe("pump", () => {
   //   }
   // })
 
-  it("Swap token", async () => {
+  it('Swap token', async () => {
     try {
-      const [curveConfig] = PublicKey.findProgramAddressSync(
-        [Buffer.from(curveSeed)],
-        program.programId
-      )
+      const [curveConfig] = PublicKey.findProgramAddressSync([Buffer.from(curveSeed)], program.programId);
 
-      const [poolPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from(POOL_SEED_PREFIX), mint1.toBuffer()],
-        program.programId
-      )
-      const poolTokenOne = await getAssociatedTokenAddress(
-        mint1, poolPda, true
-      )
-      
-      const userAta1 = await getAssociatedTokenAddress(
-        mint1, user.publicKey
-      )
-      
+      const [poolPda] = PublicKey.findProgramAddressSync([Buffer.from(POOL_SEED_PREFIX), mint1.toBuffer()], program.programId);
+      const poolTokenOne = await getAssociatedTokenAddress(mint1, poolPda, true);
 
-      const tx = new Transaction()
-        .add(
-          ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }),
-          ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 200_000 }),
-          await program.methods
-            .swap(new BN(200000000), new BN(2))
-            .accounts({
-              pool: poolPda,
-              mintTokenOne: mint1,
-              poolTokenAccountOne: poolTokenOne,
-              userTokenAccountOne: userAta1,
-              dexConfigurationAccount: curveConfig,
-              user: user.publicKey,
-              tokenProgram: TOKEN_PROGRAM_ID,
-              associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
-              rent: SYSVAR_RENT_PUBKEY,
-              systemProgram: SystemProgram.programId
-            })
-            .instruction()
-        )
-      tx.feePayer = user.publicKey
-      tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
+      const userAta1 = await getAssociatedTokenAddress(mint1, user.publicKey);
+
+      const tx = new Transaction().add(
+        ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }),
+        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 200_000 }),
+        await program.methods
+          .swap(new BN(200000000), new BN(2))
+          .accounts({
+            pool: poolPda,
+            mintTokenOne: mint1,
+            poolTokenAccountOne: poolTokenOne,
+            userTokenAccountOne: userAta1,
+            dexConfigurationAccount: curveConfig,
+            user: user.publicKey,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_PROGRAM_ID,
+            rent: SYSVAR_RENT_PUBKEY,
+            systemProgram: SystemProgram.programId
+          })
+          .instruction()
+      );
+      tx.feePayer = user.publicKey;
+      tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
       // console.log(await connection.simulateTransaction(tx))
-      const sig = await sendAndConfirmTransaction(connection, tx, [user], { skipPreflight: true })
-      console.log("Successfully swapped : ", sig)
-
+      const sig = await sendAndConfirmTransaction(connection, tx, [user], { skipPreflight: true });
+      console.log('Successfully swapped : ', sig);
     } catch (error) {
-      console.log("Error in swap transaction", error)
+      console.log('Error in swap transaction', error);
     }
-  })
+  });
 
   // it("Remove liquidity", async () => {
   //   try {
-      
+
   //     const [poolPda] = PublicKey.findProgramAddressSync(
   //       [Buffer.from(POOL_SEED_PREFIX), mint1.toBuffer()],
   //       program.programId
@@ -384,7 +369,5 @@ function comparePublicKeys(pubkey1: PublicKey, pubkey2: PublicKey): number {
 }
 
 function generateSeed(tokenOne: PublicKey, tokenTwo: PublicKey): string {
-  return comparePublicKeys(tokenOne, tokenTwo) > 0
-    ? `${tokenOne.toString()}${tokenTwo.toString()}`
-    : `${tokenTwo.toString()}${tokenOne.toString()}`;
+  return comparePublicKeys(tokenOne, tokenTwo) > 0 ? `${tokenOne.toString()}${tokenTwo.toString()}` : `${tokenTwo.toString()}${tokenOne.toString()}`;
 }
