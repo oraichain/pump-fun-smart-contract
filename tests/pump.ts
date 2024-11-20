@@ -1,14 +1,12 @@
 import * as anchor from '@coral-xyz/anchor';
 import { Program } from '@coral-xyz/anchor';
 import { Pump } from '../target/types/pump';
-import { Connection, PublicKey, Keypair, SystemProgram, Transaction, sendAndConfirmTransaction, ComputeBudgetProgram, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
+import { PublicKey, Keypair, SystemProgram, Transaction, sendAndConfirmTransaction, ComputeBudgetProgram, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
 import { createMint, getOrCreateAssociatedTokenAccount, mintTo, getAssociatedTokenAddress } from '@solana/spl-token';
-import { expect } from 'chai';
 import { BN } from 'bn.js';
-import keys from './keys/users.json';
+import key1 from './keys/user1.json';
 import key2 from './keys/user2.json';
 import { ASSOCIATED_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@coral-xyz/anchor/dist/cjs/utils/token';
-import { getBase58Decoder } from '@solana/codecs-strings';
 import { simulateTransaction } from '@coral-xyz/anchor/dist/cjs/utils/rpc';
 
 anchor.setProvider(anchor.AnchorProvider.env());
@@ -18,15 +16,11 @@ const curveSeed = 'CurveConfiguration';
 const POOL_SEED_PREFIX = 'liquidity_pool';
 const LP_SEED_PREFIX = 'LiqudityProvider';
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 describe('pump', () => {
   const program = anchor.workspace.Pump as Program<Pump>;
 
   // custom setting
-  const user = Keypair.fromSecretKey(new Uint8Array(keys));
+  const user = Keypair.fromSecretKey(new Uint8Array(key1));
   const user2 = Keypair.fromSecretKey(new Uint8Array(key2));
   const tokenDecimal = 6;
   const amount = new BN(1000000000).mul(new BN(10 ** tokenDecimal));
@@ -44,39 +38,9 @@ describe('pump', () => {
 
   it('Airdrop to admin wallet', async () => {
     console.log(`Requesting airdrop to admin for 1SOL : ${user.publicKey.toBase58()}`);
-    // 1 - Request Airdrop
-    const signature = await connection.requestAirdrop(user.publicKey, 10 ** 9);
-    // 2 - Fetch the latest blockhash
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-    // 3 - Confirm transaction success
-    await connection.confirmTransaction(
-      {
-        blockhash,
-        lastValidBlockHeight,
-        signature
-      },
-      'finalized'
-    );
+    await airdrop(user.publicKey);
+    await airdrop(user2.publicKey);
     console.log('admin wallet balance : ', (await connection.getBalance(user.publicKey)) / 10 ** 9, 'SOL');
-  });
-
-  it('Airdrop to user wallet', async () => {
-    console.log('Created a user, address is ', user2.publicKey.toBase58());
-    console.log(`Requesting airdrop for another user ${user.publicKey.toBase58()}`);
-    // 1 - Request Airdrop
-    const signature = await connection.requestAirdrop(user2.publicKey, 10 ** 9);
-    // 2 - Fetch the latest blockhash
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-    // 3 - Confirm transaction success
-    await connection.confirmTransaction(
-      {
-        blockhash,
-        lastValidBlockHeight,
-        signature
-      },
-      'finalized'
-    );
-    console.log('user balance : ', (await connection.getBalance(user.publicKey)) / 10 ** 9, 'SOL');
   });
 
   it('Mint token1 to user wallet', async () => {
@@ -222,14 +186,11 @@ describe('pump', () => {
       // 2 - Fetch the latest blockhash
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       // 3 - Confirm transaction success
-      await connection.confirmTransaction(
-        {
-          blockhash,
-          lastValidBlockHeight,
-          signature
-        },
-        'finalized'
-      );
+      await connection.confirmTransaction({
+        blockhash,
+        lastValidBlockHeight,
+        signature
+      });
     } catch (error) {
       console.log('Error in adding liquidity', error);
     }
@@ -327,4 +288,17 @@ function comparePublicKeys(pubkey1: PublicKey, pubkey2: PublicKey): number {
 
 function generateSeed(tokenOne: PublicKey, tokenTwo: PublicKey): string {
   return comparePublicKeys(tokenOne, tokenTwo) > 0 ? `${tokenOne.toString()}${tokenTwo.toString()}` : `${tokenTwo.toString()}${tokenOne.toString()}`;
+}
+
+async function airdrop(publicKey: PublicKey) {
+  // 1 - Request Airdrop
+  const signature = await connection.requestAirdrop(publicKey, 10 ** 9);
+  // 2 - Fetch the latest blockhash
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+  // 3 - Confirm transaction success
+  await connection.confirmTransaction({
+    blockhash,
+    lastValidBlockHeight,
+    signature
+  });
 }
