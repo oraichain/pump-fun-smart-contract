@@ -426,10 +426,10 @@ impl<'info> LiquidityPoolAccount<'info> for Account<'info, LiquidityPool> {
             )?;
 
             self.transfer_sol_from_pool(
-                // token_two_accounts.2,
-                authority,
                 // token_two_accounts.1,
                 &self.to_account_info(),
+                // token_two_accounts.2,
+                authority,
                 amount_out,
                 system_program,
             )?;

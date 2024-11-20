@@ -4,14 +4,14 @@
 seeds = true
 skip-lint = false
 
-[programs.devnet]
+[programs.localnet]
 pump = "7iv4BWBhTBU6fRQrtogzEWfgE2inHz53AujdfPk9riC6"
 
 [registry]
-url = "https://devnet.helius-rpc.com/?api-key=39d83ffa-585c-4f90-8636-2f6795db4cb3"
+url = "http://localhost:8899"
 
 [provider]
-cluster = "Devnet"
+cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

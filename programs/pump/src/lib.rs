@@ -1,10 +1,10 @@
 use anchor_lang::prelude::*;
 
+pub mod consts;
 pub mod errors;
-pub mod utils;
 pub mod instructions;
 pub mod state;
-pub mod consts;
+pub mod utils;
 
 use crate::instructions::*;
 
