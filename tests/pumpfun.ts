@@ -5,8 +5,11 @@ import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from
 import * as assert from "assert";
 import { SEED_CONFIG, SEED_BONDING_CURVE, TEST_DECIMALS, TEST_NAME, TEST_SYMBOL, TEST_TOKEN_SUPPLY, TEST_URI, TEST_VIRTUAL_RESERVES } from "./constant";
 import { getAssociatedTokenAccount, sleep } from "./utils";
-import { token } from "@coral-xyz/anchor/dist/cjs/utils";
 require("dotenv").config();
+
+// const tokenProgram = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+// const associatedTokenProgram = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
+// const metadataProgram = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s";
 
 describe("pumpfun", () => {
   // Configure the client to use the local cluster.
@@ -49,7 +52,7 @@ describe("pumpfun", () => {
     await connection.confirmTransaction(airdropTx3);
   });
 
-  it("Is configured", async () => {
+  it("Is correctly configured", async () => {
 
     // Create a dummy config object to pass as argument.
     const newConfig = {
@@ -259,3 +262,6 @@ describe("pumpfun", () => {
 
   });
 });
+
+
+// solana-test-validator -r --bpf-program metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s spl-programs/metadata.so --bpf-program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA spl-programs/token.so --bpf-program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL spl-programs/associatedtoken.so

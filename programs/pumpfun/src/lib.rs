@@ -9,7 +9,7 @@ use crate::instructions::*;
 use anchor_lang::prelude::*;
 use state::Config;
 
-declare_id!("FdiaqHxc5b5hHNAMpdhAHzR1b9keBMdMPzhUiQrhLQoG");
+declare_id!("wenBqrmxFAvovtz2jVRyNKjQQWzFF23Qv5oz3PSvDEW");
 
 #[program]
 pub mod pumpfun {
