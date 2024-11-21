@@ -1,3 +1,7 @@
+#!/bin/bash
+
+# Don't run this alone. Use with anchor. Like: anchor run test
+
 TEST_ARGS=""
 if [ -n "$1" ]; then
   TEST_ARGS="-g $1"
