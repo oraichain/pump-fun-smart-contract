@@ -25,6 +25,7 @@ import {
 } from "@coral-xyz/anchor/dist/cjs/utils/token";
 import { simulateTransaction } from "@coral-xyz/anchor/dist/cjs/utils/rpc";
 import { assert, expect } from "chai";
+import { execSync } from "child_process";
 
 anchor.setProvider(anchor.AnchorProvider.env());
 
@@ -41,6 +42,7 @@ describe("pump", () => {
   const user2 = Keypair.fromSecretKey(new Uint8Array(key2));
   const tokenDecimal = 6;
   const amount = new BN(1000000000).mul(new BN(10 ** tokenDecimal));
+  const airdropAmount = 10 ** 11;
   console.log(BigInt(amount.toString()));
   console.log(BigInt(amount.toString()).toString());
   console.log("🚀 ~ describe ~ amount:", amount.toString());
@@ -57,12 +59,12 @@ describe("pump", () => {
     console.log(
       `Requesting airdrop to admin for 1SOL : ${user.publicKey.toBase58()}`
     );
-    await airdrop(user.publicKey);
-    await airdrop(user2.publicKey);
+    await airdrop(user.publicKey, airdropAmount);
+    await airdrop(user2.publicKey, airdropAmount);
     const adminBalance =
       (await connection.getBalance(user.publicKey)) / 10 ** 9;
     console.log("admin wallet balance : ", adminBalance, "SOL");
-    assert.isAbove(adminBalance, 0);
+    assert.isAbove(adminBalance, 10);
   });
 
   it("Mint token1 to user wallet", async () => {
@@ -139,7 +141,13 @@ describe("pump", () => {
     assert.equal(tokenBalance.value.uiAmount, 10 ** 9);
   });
 
+  it("Deploy the contract", async () => {
+    const res = execSync("anchor deploy --provider.wallet ./id.json");
+    console.log(res.toString());
+  });
+
   it("Initialize the contract", async () => {
+    console.log("program id: ", program.programId.toBase58());
     const [curveConfig] = PublicKey.findProgramAddressSync(
       [Buffer.from(curveSeed)],
       program.programId
@@ -401,9 +409,9 @@ function generateSeed(tokenOne: PublicKey, tokenTwo: PublicKey): string {
     : `${tokenTwo.toString()}${tokenOne.toString()}`;
 }
 
-async function airdrop(publicKey: PublicKey) {
+async function airdrop(publicKey: PublicKey, amount: number) {
   // 1 - Request Airdrop
-  const signature = await connection.requestAirdrop(publicKey, 10 ** 9);
+  const signature = await connection.requestAirdrop(publicKey, amount);
   // 2 - Fetch the latest blockhash
   const { blockhash, lastValidBlockHeight } =
     await connection.getLatestBlockhash();

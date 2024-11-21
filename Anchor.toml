@@ -16,8 +16,7 @@ cluster = "Localnet"
 wallet = "./id.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json --bail -t 1000000 tests/**/*.ts"
-test-swap = "yarn run ts-mocha -p ./tsconfig.json --bail -t 1000000 tests/**/*.ts -g Swap Token"
+test = "./tests/anchor-tests-runner.sh"
 build-with-diff-target = "anchor build && cp $HOME/.cargo/target/sbf-solana-solana/release/pump.so $PWD/target/deploy/pump.so"
 
 [test]

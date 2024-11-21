@@ -53,8 +53,10 @@ Run a local Solana validator network:
 ```bash
 solana config set -ul    # For localhost
 
-# start a localhost testnet
-solana-test-validator
+solana config set -k ./id.json # use the test keypair for simplicity
+
+# start a localhost testnet completely fresh
+solana-test-validator -r
 ```
 
 Run some tests:
@@ -63,13 +65,13 @@ Run some tests:
 # run all tests
 anchor run test
 
-# run a single test
-anchor run test-swap
+# run a single test (e.g. a test with "Initialize" as name)
+anchor run test -- "Initialize"
 ```
 
 Deploy the program:
 
 ```bash
 # replace the wallet with your wallet.
-anchor deploy --provider.wallet ~/.config/solana/id.json
+anchor deploy --provider.wallet ./id.json
 ```
