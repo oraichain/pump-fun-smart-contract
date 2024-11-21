@@ -193,7 +193,7 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
                 user.to_account_info().clone(),
                 token_one_accounts.1.to_account_info().clone(),
                 token_program.to_account_info(),
-                amount,
+                adjusted_amount,
             )?;
 
             sol_transfer_with_signer(
@@ -257,9 +257,9 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
 
             token_transfer_with_signer(
                 token_one_accounts.1.to_account_info().clone(),
+                token_two_accounts.0.to_account_info().clone(),
                 token_one_accounts.2.to_account_info().clone(),
                 token_program.to_account_info(),
-                token_two_accounts.0.to_account_info().clone(),
                 signer,
                 amount_out,
             )?;

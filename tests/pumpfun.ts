@@ -3,7 +3,7 @@ import { BN, Program } from "@coral-xyz/anchor";
 import { Pumpfun } from "../target/types/pumpfun";
 import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import * as assert from "assert";
-import { PRESALE_TIME, SEED_CONFIG, SEED_SNIPE_QUEUE, SEED_TOKEN_LAUNCH, TEST_DECIMALS, TEST_NAME, TEST_SYMBOL, TEST_TOKEN_SUPPLY, TEST_URI, TEST_VIRTUAL_RESERVES } from "./constant";
+import { SEED_CONFIG, SEED_BONDING_CURVE, TEST_DECIMALS, TEST_NAME, TEST_SYMBOL, TEST_TOKEN_SUPPLY, TEST_URI, TEST_VIRTUAL_RESERVES } from "./constant";
 import { getAssociatedTokenAccount, sleep } from "./utils";
 import { token } from "@coral-xyz/anchor/dist/cjs/utils";
 require("dotenv").config();
@@ -57,16 +57,9 @@ describe("pumpfun", () => {
       pendingAuthority: PublicKey.default,
 
       teamWallet: adminKp.publicKey,
-      pegasusWallet: adminKp.publicKey,
 
       platformBuyFee: 5.0, // Example fee: 5%
       platformSellFee: 5.0, // Example fee: 5%
-      platformMigrateFee: 500, //  Example fee: 5%
-
-      pegasusFee: 500, //  Example fee: 5%
-      
-      presaleTime: new BN(PRESALE_TIME), // Example time: 2 secs
-      maxBidPercent: 100, //  Example fee: 1%
 
       curveLimit: new BN(4_000_000_000), //  Example limit: 2 SOL
 
@@ -110,7 +103,7 @@ describe("pumpfun", () => {
     assert.equal(parseFloat(configAccount.tokenDecimalsConfig.range.max.toString()), 9);
   });
 
-  it("Is the bonding curveed", async () => {
+  it("Is the token created", async () => {
 
     console.log("token: ", tokenKp.publicKey.toBase58());
 
@@ -145,7 +138,7 @@ describe("pumpfun", () => {
     
     // check launch phase is 'Presale'
     const [bondingCurvePda, _] = PublicKey.findProgramAddressSync(
-      [Buffer.from(SEED_TOKEN_LAUNCH), tokenKp.publicKey.toBytes()],
+      [Buffer.from(SEED_BONDING_CURVE), tokenKp.publicKey.toBytes()],
       program.programId
     );
 
@@ -154,7 +147,7 @@ describe("pumpfun", () => {
     const curveAccount = await program.account.bondingCurve.fetch(bondingCurvePda);
 
     // Assertions to verify configuration
-    assert.equal(curveAccount.creator, userKp.publicKey);
+    assert.equal(curveAccount.creator.toBase58(), userKp.publicKey.toBase58());
 
   });
 
@@ -255,7 +248,7 @@ describe("pumpfun", () => {
 
     // check launch phase is 'completed'
     const [bondingCurvePda] = PublicKey.findProgramAddressSync(
-      [Buffer.from(SEED_TOKEN_LAUNCH), tokenKp.publicKey.toBytes()],
+      [Buffer.from(SEED_BONDING_CURVE), tokenKp.publicKey.toBytes()],
       program.programId
     );
 
