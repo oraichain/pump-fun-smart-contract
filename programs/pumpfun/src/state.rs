@@ -17,10 +17,10 @@ pub struct Config {
 
     pub team_wallet: Pubkey,
 
-    pub platform_buy_fee: f64,  //  platform fee percentage
+    pub platform_buy_fee: f64, //  platform fee percentage
     pub platform_sell_fee: f64,
 
-    pub curve_limit: u64,       //  lamports to complete te bonding curve
+    pub curve_limit: u64, //  lamports to complete te bonding curve
 
     pub lamport_amount_config: AmountConfig<u64>,
     pub token_supply_config: AmountConfig<u64>,
@@ -78,7 +78,12 @@ pub struct BondingCurve {
 }
 pub trait BondingCurveAccount<'info> {
     // Updates the token reserves in the liquidity pool
-    fn update_reserves(&mut self, global_config: &Account<'info, Config>, reserve_one: u64, reserve_two: u64) -> Result<bool>;
+    fn update_reserves(
+        &mut self,
+        global_config: &Account<'info, Config>,
+        reserve_one: u64,
+        reserve_two: u64,
+    ) -> Result<bool>;
 
     fn swap(
         &mut self,
@@ -102,14 +107,19 @@ pub trait BondingCurveAccount<'info> {
 }
 
 impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
-    fn update_reserves(&mut self, global_config: &Account<'info, Config>, reserve_token: u64, reserve_lamport: u64) -> Result<bool> {
+    fn update_reserves(
+        &mut self,
+        global_config: &Account<'info, Config>,
+        reserve_token: u64,
+        reserve_lamport: u64,
+    ) -> Result<bool> {
         self.reserve_token = reserve_token;
         self.reserve_lamport = reserve_lamport;
 
         if reserve_lamport >= global_config.curve_limit {
             msg!("curve is completed");
             self.is_completed = true;
-            return Ok(true)
+            return Ok(true);
         }
 
         Ok(false)
@@ -189,19 +199,19 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
             self.update_reserves(global_config, new_reserves_one, new_reserves_two)?;
             msg! {"Reserves: {:?} {:?}", new_reserves_one, new_reserves_two}
             token_transfer_user(
-                token_one_accounts.2.to_account_info().clone(),
-                user.to_account_info().clone(),
-                token_one_accounts.1.to_account_info().clone(),
+                token_one_accounts.2.to_account_info(),
+                user.to_account_info(),
+                token_one_accounts.1.to_account_info(),
                 token_program.to_account_info(),
                 adjusted_amount,
             )?;
 
             sol_transfer_with_signer(
-                token_two_accounts.0.to_account_info().clone(),
-                token_two_accounts.1.to_account_info().clone(),
+                token_two_accounts.0.to_account_info(),
+                token_two_accounts.1.to_account_info(),
                 system_program.to_account_info(),
                 signer,
-                amount_out
+                amount_out,
             )?;
 
             //  transfer fee to team wallet
@@ -210,13 +220,12 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
             msg! {"fee: {:?}", fee_amount}
 
             token_transfer_user(
-                token_one_accounts.2.to_account_info().clone(),
-                user.to_account_info().clone(),
-                team_wallet_accounts.1.to_account_info().clone(),
+                token_one_accounts.2.to_account_info(),
+                user.to_account_info(),
+                team_wallet_accounts.1.to_account_info(),
                 token_program.to_account_info(),
-                fee_amount
+                fee_amount,
             )?;
-            
         } else {
             let denominator_sum = self
                 .reserve_lamport
@@ -241,47 +250,45 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
                 .checked_add(amount)
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
 
-            let is_completed = self.update_reserves(global_config, new_reserves_one, new_reserves_two)?;
+            let is_completed =
+                self.update_reserves(global_config, new_reserves_one, new_reserves_two)?;
 
             if is_completed == true {
-                emit!(
-                    CompleteEvent {
-                        user: token_two_accounts.1.key(), 
-                        mint: token_one_accounts.0.key(), 
-                        bonding_curve: self.key()
-                    }
-                );
+                emit!(CompleteEvent {
+                    user: token_two_accounts.1.key(),
+                    mint: token_one_accounts.0.key(),
+                    bonding_curve: self.key()
+                });
             }
 
             msg! {"Reserves: {:?} {:?}", new_reserves_one, new_reserves_two}
 
             token_transfer_with_signer(
-                token_one_accounts.1.to_account_info().clone(),
-                token_two_accounts.0.to_account_info().clone(),
-                token_one_accounts.2.to_account_info().clone(),
+                token_one_accounts.1.to_account_info(),
+                token_two_accounts.0.to_account_info(),
+                token_one_accounts.2.to_account_info(),
                 token_program.to_account_info(),
                 signer,
                 amount_out,
             )?;
 
             sol_transfer_user(
-                token_two_accounts.1.to_account_info().clone(),
-                token_two_accounts.0.to_account_info().clone(),
+                token_two_accounts.1.to_account_info(),
+                token_two_accounts.0.to_account_info(),
                 system_program.to_account_info(),
-                amount
+                amount,
             )?;
-            
+
             //  transfer fee to team wallet, pegasus wallet
             let fee_amount = amount - adjusted_amount;
 
             sol_transfer_user(
-                token_two_accounts.1.to_account_info().clone(),
-                team_wallet_accounts.0.to_account_info().clone(),
+                token_two_accounts.1.to_account_info(),
+                team_wallet_accounts.0.to_account_info(),
                 system_program.to_account_info(),
-                fee_amount
+                fee_amount,
             )?;
         }
         Ok(())
     }
-
 }

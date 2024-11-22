@@ -100,18 +100,18 @@ pub fn swap(ctx: Context<Swap>, amount: u64, direction: u8) -> Result<()> {
 
     let token_one_accounts = (
         &mut *ctx.accounts.token_mint.clone(),
-        &mut ctx.accounts.global_ata.clone(),
-        &mut ctx.accounts.user_ata.clone(),
+        &mut ctx.accounts.global_ata.to_account_info(),
+        &mut ctx.accounts.user_ata.to_account_info(),
     );
 
     let token_two_accounts = (
-        &mut ctx.accounts.global_vault.to_account_info().clone(),
-        &mut ctx.accounts.user.to_account_info().clone()
+        &mut ctx.accounts.global_vault.to_account_info(),
+        &mut ctx.accounts.user.to_account_info()
     );
 
     let team_wallet_accounts = (
-        &mut ctx.accounts.team_wallet.clone(),
-        &mut ctx.accounts.team_wallet_ata.clone()
+        &mut ctx.accounts.team_wallet.to_account_info(),
+        &mut ctx.accounts.team_wallet_ata.to_account_info()
     );
 
     let token = &mut ctx.accounts.token_mint;
