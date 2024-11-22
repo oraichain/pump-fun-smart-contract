@@ -4,6 +4,7 @@ pub mod instructions;
 pub mod state;
 pub mod utils;
 pub mod events;
+pub mod amm_instruction;
 
 use crate::instructions::*;
 use anchor_lang::prelude::*;
@@ -74,5 +75,14 @@ pub mod pumpfun {
         ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>
     ) -> Result<()> {
         instructions::withdraw(ctx)
+    }
+
+    //  backend receives a event when the curve is copmleted and run this instruction
+    //  removes bonding curve and add liquidity to raydium
+    pub fn migrate<'info>(
+        ctx: Context<'_, '_, '_, 'info, Migrate<'info>>,
+        nonce: u8
+    ) -> Result<()> {
+        instructions::migrate(ctx, nonce)
     }
 }

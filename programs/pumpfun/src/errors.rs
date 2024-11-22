@@ -13,17 +13,8 @@ pub enum PumpfunError {
     #[msg("ValueInvalid")]
     ValueInvalid,
 
-    #[msg("SerializationFailed")]
-    SerializationFailed,
-
     #[msg("IncorrectAuthority")]
     IncorrectAuthority,
-
-    #[msg("NothingToDo")]
-    NothingToDo,
-    
-    #[msg("Program is in an invalid state")]
-    InvalidState,
 
     #[msg("Overflow or underflow occured")]
     OverflowOrUnderflowOccurred,
@@ -36,4 +27,10 @@ pub enum PumpfunError {
     
     #[msg("Curve is not completed")]
     CurveNotCompleted,
+    
+    #[msg("Mint authority should be revoked")]
+    MintAuthorityEnabled,
+    
+    #[msg("Freeze authority should be revoked")]
+    FreezeAuthorityEnabled,
 }
