@@ -5,14 +5,11 @@ anchor_version = "0.30.1"
 resolution = true
 skip-lint = true
 
-# [programs.devnet]
-# pumpfun = "FdiaqHxc5b5hHNAMpdhAHzR1b9keBMdMPzhUiQrhLQoG"
-
 [programs.localnet]
-pumpfun = "wenBqrmxFAvovtz2jVRyNKjQQWzFF23Qv5oz3PSvDEW"
+pumpfun = "DrebsWVUmVeyEt5g7Ug64DAxpsUpJeWPzuJd6rDoVabd"
 
-# [registry]
-# url = "https://api.apr.dev"
+[registry]
+url = "https://api.apr.dev"
 
 [provider]
 cluster = "Localnet"
@@ -20,7 +17,8 @@ wallet = "./testKeypair.json"
 
 [scripts]
 build = "rm -rf target && anchor build && mkdir -p target/deploy && cp ./keys/programs/wenBqrmxFAvovtz2jVRyNKjQQWzFF23Qv5oz3PSvDEW.json ./target/deploy/pumpfun-keypair.json"
-build-with-so = "anchor run build && cp $HOME/.cargo/target/sbf-solana-solana/release/pumpfun.so $PWD/target/deploy/pumpfun.so"
+# ln -s $HOME/.cargo/target/sbf-solana-solana/release/pumpfun.so $PWD/target/deploy/pumpfun.so
+build-with-so = "anchor run build"
 test = "./tests/anchor-tests-runner.sh"
 
 [test]
