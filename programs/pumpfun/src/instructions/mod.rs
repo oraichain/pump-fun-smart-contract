@@ -10,3 +10,5 @@ pub mod swap;
 pub use swap::*;
 pub mod withdraw;
 pub use withdraw::*;
+pub mod migrate;
+pub use migrate::*;
