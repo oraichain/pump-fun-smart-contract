@@ -93,7 +93,7 @@ pub struct Swap<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
-pub fn swap(ctx: Context<Swap>, amount: u64, direction: u8) -> Result<()> {
+pub fn swap(ctx: Context<Swap>, amount: u64, direction: u8, minimum_receive_amount: u64) -> Result<u64> {
     let bonding_curve = &mut ctx.accounts.bonding_curve;
 
     //  check curve is not completed
@@ -156,7 +156,7 @@ pub fn swap(ctx: Context<Swap>, amount: u64, direction: u8) -> Result<()> {
         &[ctx.bumps.global_vault],
     ]];
 
-    bonding_curve.swap(
+    let amount_out = bonding_curve.swap(
         &*ctx.accounts.global_config,
         token_one_accounts,
         token_two_accounts,
@@ -164,6 +164,7 @@ pub fn swap(ctx: Context<Swap>, amount: u64, direction: u8) -> Result<()> {
 
         amount,
         direction,
+        minimum_receive_amount,
 
         &ctx.accounts.user,
         signer_seeds,
@@ -172,5 +173,5 @@ pub fn swap(ctx: Context<Swap>, amount: u64, direction: u8) -> Result<()> {
         &ctx.accounts.system_program,
     )?;
     
-    Ok(())
+    Ok(amount_out)
 }

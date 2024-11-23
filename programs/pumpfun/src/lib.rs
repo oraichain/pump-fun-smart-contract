@@ -1,16 +1,16 @@
+pub mod amm_instruction;
 pub mod constants;
 pub mod errors;
+pub mod events;
 pub mod instructions;
 pub mod state;
 pub mod utils;
-pub mod events;
-pub mod amm_instruction;
 
 use crate::instructions::*;
 use anchor_lang::prelude::*;
 use state::Config;
 
-declare_id!("DrebsWVUmVeyEt5g7Ug64DAxpsUpJeWPzuJd6rDoVabd");
+declare_id!("wenBqrmxFAvovtz2jVRyNKjQQWzFF23Qv5oz3PSvDEW");
 
 #[program]
 pub mod pumpfun {
@@ -64,16 +64,25 @@ pub mod pumpfun {
     pub fn swap<'info>(
         ctx: Context<'_, '_, '_, 'info, Swap<'info>>,
         amount: u64,
-        direction: u8
-    ) -> Result<()> {
-        instructions::swap(ctx, amount, direction)
+        direction: u8,
+        minimum_receive_amount: u64,
+    ) -> Result<u64> {
+        instructions::swap(ctx, amount, direction, minimum_receive_amount)
     }
-    
+
+    //  amount - swap amount
+    //  direction - 0: buy, 1: sell
+    pub fn simulate_swap<'info>(
+        ctx: Context<'_, '_, '_, 'info, SimulateSwap<'info>>,
+        amount: u64,
+        direction: u8,
+    ) -> Result<u64> {
+        instructions::simulate_swap(ctx, amount, direction)
+    }
+
     //  admin can withdraw sol/token after the curve is completed
     //  backend receives a event when the curve is completed and call this instruction
-    pub fn withdraw<'info>(
-        ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>
-    ) -> Result<()> {
+    pub fn withdraw<'info>(ctx: Context<'_, '_, '_, 'info, Withdraw<'info>>) -> Result<()> {
         instructions::withdraw(ctx)
     }
 
@@ -81,7 +90,7 @@ pub mod pumpfun {
     //  removes bonding curve and add liquidity to raydium
     pub fn migrate<'info>(
         ctx: Context<'_, '_, '_, 'info, Migrate<'info>>,
-        nonce: u8
+        nonce: u8,
     ) -> Result<()> {
         instructions::migrate(ctx, nonce)
     }
