@@ -1,3 +1,4 @@
+use crate::constants::LAMPORT_DECIMALS;
 use crate::errors::*;
 use crate::events::CompleteEvent;
 use crate::utils::*;
@@ -296,13 +297,6 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
             return err!(PumpfunError::InvalidAmount);
         }
 
-        // xy = k => Constant product formula
-        // (x + dx)(y - dy) = k
-        // y - dy = k / (x + dx)
-        // y - dy = xy / (x + dx)
-        // dy = y - (xy / (x + dx))
-        // dy = yx + ydx - xy / (x + dx)
-        // formula => dy = ydx / (x + dx)
         Ok(self
             .cal_amount_out(
                 amount,
@@ -327,7 +321,7 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
         // y - dy = k / (x + dx)
         // y - dy = xy / (x + dx)
         // dy = y - (xy / (x + dx))
-        // dy = yx + ydx - xy / (x + dx)
+        // dy = (yx + ydx - xy) / (x + dx)
         // formula => dy = ydx / (x + dx)
 
         let fee_percent = if direction == 1 {
@@ -346,17 +340,23 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
 
         // sell
         if direction == 1 {
+            // sell, token for sel
+            // x + dx token
             let denominator_sum = self
                 .reserve_token
                 .checked_add(adjusted_amount)
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
 
+            // (x + dx) / dx
             let div_amt = convert_to_float(denominator_sum, token_one_decimals)
                 .div(convert_to_float(adjusted_amount, token_one_decimals));
 
-            let amount_out_in_float = convert_to_float(self.reserve_lamport, 9 as u8).div(div_amt);
+            // dy = y / ((x + dx) / dx)
+            // dx = ydx / (x + dx)
+            let amount_out_in_float =
+                convert_to_float(self.reserve_lamport, LAMPORT_DECIMALS).div(div_amt);
 
-            amount_out = convert_from_float(amount_out_in_float, 9 as u8);
+            amount_out = convert_from_float(amount_out_in_float, LAMPORT_DECIMALS);
         } else {
             // buy, sol for token
             // y + dy sol
@@ -366,14 +366,15 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
                 .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
 
             // (y + dy) / dy
-            let div_amt = convert_to_float(denominator_sum, token_one_decimals)
-                .div(convert_to_float(adjusted_amount, token_one_decimals));
+            let div_amt = convert_to_float(denominator_sum, LAMPORT_DECIMALS)
+                .div(convert_to_float(adjusted_amount, LAMPORT_DECIMALS));
 
             // dx = x / ((y + dy) / dy)
             // dx = xdy / (y + dy)
-            let amount_out_in_float = convert_to_float(self.reserve_token, 9 as u8).div(div_amt);
+            let amount_out_in_float =
+                convert_to_float(self.reserve_token, token_one_decimals).div(div_amt);
 
-            amount_out = convert_from_float(amount_out_in_float, 9 as u8);
+            amount_out = convert_from_float(amount_out_in_float, token_one_decimals);
         }
         Ok((adjusted_amount, amount_out))
     }
