@@ -33,4 +33,7 @@ pub enum PumpfunError {
     
     #[msg("Freeze authority should be revoked")]
     FreezeAuthorityEnabled,
+
+    #[msg("Return amount is too small compared to the minimum received amount")]
+    ReturnAmountTooSmall,
 }

@@ -91,7 +91,7 @@ export const swapTx = async (
   const configAccount = await program.account.config.fetch(configPda);
   
   const tx = await program.methods
-    .swap(new BN(amount), style)
+    .swap(new BN(amount), style, new BN(amount))
     .accounts({
       teamWallet: configAccount.teamWallet,
       

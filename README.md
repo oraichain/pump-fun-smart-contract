@@ -31,7 +31,7 @@ anchor run build
 # then you'll need to move the <program-name>.so back to $PWD/target/deploy/<program-name.so>.
 
 # E.g:
-cp $HOME/.cargo/target/sbf-solana-solana/release/pumpfun.so $PWD/target/deploy/pumpfun.so
+ln -s $HOME/.cargo/target/sbf-solana-solana/release/pumpfun.so $PWD/target/deploy/pumpfun.so
 ```
 
 ### Run tests

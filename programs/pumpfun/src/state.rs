@@ -98,13 +98,31 @@ pub trait BondingCurveAccount<'info> {
         team_wallet_accounts: (&mut AccountInfo<'info>, &mut AccountInfo<'info>),
         amount: u64,
         direction: u8,
+        minimum_receive_amount: u64,
 
         user: &Signer<'info>,
         signer: &[&[&[u8]]],
 
         token_program: &Program<'info, Token>,
         system_program: &Program<'info, System>,
-    ) -> Result<()>;
+    ) -> Result<u64>;
+
+    fn simulate_swap(
+        &self,
+        global_config: &Account<'info, Config>,
+        token_one_accounts: (&Account<'info, Mint>,),
+        amount: u64,
+        direction: u8,
+    ) -> Result<u64>;
+
+    fn cal_amount_out(
+        &self,
+        amount: u64,
+        token_one_decimals: u8,
+        direction: u8,
+        platform_sell_fee: f64,
+        platform_buy_fee: f64,
+    ) -> Result<(u64, u64)>;
 }
 
 impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
@@ -139,13 +157,14 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
 
         amount: u64,
         direction: u8,
+        minimum_receive_amount: u64,
 
         user: &Signer<'info>,
         signer: &[&[&[u8]]],
 
         token_program: &Program<'info, Token>,
         system_program: &Program<'info, System>,
-    ) -> Result<()> {
+    ) -> Result<u64> {
         if amount <= 0 {
             return err!(PumpfunError::InvalidAmount);
         }
@@ -160,33 +179,19 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
         // dy = yx + ydx - xy / (x + dx)
         // formula => dy = ydx / (x + dx)
 
-        let fee_percent = if direction == 1 {
-            global_config.platform_sell_fee
-        } else {
-            global_config.platform_buy_fee
-        };
+        let (adjusted_amount, amount_out) = self.cal_amount_out(
+            amount,
+            token_one_accounts.0.decimals,
+            direction,
+            global_config.platform_sell_fee,
+            global_config.platform_buy_fee,
+        )?;
 
-        let adjusted_amount_in_float = convert_to_float(amount, token_one_accounts.0.decimals)
-            .div(100_f64)
-            .mul(100_f64.sub(fee_percent));
-
-        let adjusted_amount =
-            convert_from_float(adjusted_amount_in_float, token_one_accounts.0.decimals);
+        if amount_out < minimum_receive_amount {
+            return Err(PumpfunError::ReturnAmountTooSmall.into());
+        }
 
         if direction == 1 {
-            let denominator_sum = self
-                .reserve_token
-                .checked_add(adjusted_amount)
-                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
-
-            let div_amt = convert_to_float(denominator_sum, token_one_accounts.0.decimals).div(
-                convert_to_float(adjusted_amount, token_one_accounts.0.decimals),
-            );
-
-            let amount_out_in_float = convert_to_float(self.reserve_lamport, 9 as u8).div(div_amt);
-
-            let amount_out = convert_from_float(amount_out_in_float, 9 as u8);
-
             let new_reserves_one = self
                 .reserve_token
                 .checked_add(amount)
@@ -228,19 +233,6 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
                 fee_amount,
             )?;
         } else {
-            let denominator_sum = self
-                .reserve_lamport
-                .checked_add(adjusted_amount)
-                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
-
-            let div_amt = convert_to_float(denominator_sum, token_one_accounts.0.decimals).div(
-                convert_to_float(adjusted_amount, token_one_accounts.0.decimals),
-            );
-
-            let amount_out_in_float = convert_to_float(self.reserve_token, 9 as u8).div(div_amt);
-
-            let amount_out = convert_from_float(amount_out_in_float, 9 as u8);
-
             let new_reserves_one = self
                 .reserve_token
                 .checked_sub(amount_out)
@@ -290,6 +282,99 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
                 fee_amount,
             )?;
         }
-        Ok(())
+        Ok(amount_out)
+    }
+
+    fn simulate_swap(
+        &self,
+        global_config: &Account<'info, Config>,
+        token_one_accounts: (&Account<'info, Mint>,),
+        amount: u64,
+        direction: u8,
+    ) -> Result<u64> {
+        if amount <= 0 {
+            return err!(PumpfunError::InvalidAmount);
+        }
+
+        // xy = k => Constant product formula
+        // (x + dx)(y - dy) = k
+        // y - dy = k / (x + dx)
+        // y - dy = xy / (x + dx)
+        // dy = y - (xy / (x + dx))
+        // dy = yx + ydx - xy / (x + dx)
+        // formula => dy = ydx / (x + dx)
+        Ok(self
+            .cal_amount_out(
+                amount,
+                token_one_accounts.0.decimals,
+                direction,
+                global_config.platform_sell_fee,
+                global_config.platform_buy_fee,
+            )?
+            .1)
+    }
+
+    fn cal_amount_out(
+        &self,
+        amount: u64,
+        token_one_decimals: u8,
+        direction: u8,
+        platform_sell_fee: f64,
+        platform_buy_fee: f64,
+    ) -> Result<(u64, u64)> {
+        // xy = k => Constant product formula
+        // (x + dx)(y - dy) = k
+        // y - dy = k / (x + dx)
+        // y - dy = xy / (x + dx)
+        // dy = y - (xy / (x + dx))
+        // dy = yx + ydx - xy / (x + dx)
+        // formula => dy = ydx / (x + dx)
+
+        let fee_percent = if direction == 1 {
+            platform_sell_fee
+        } else {
+            platform_buy_fee
+        };
+
+        let adjusted_amount_in_float = convert_to_float(amount, token_one_decimals)
+            .div(100_f64)
+            .mul(100_f64.sub(fee_percent));
+
+        let adjusted_amount = convert_from_float(adjusted_amount_in_float, token_one_decimals);
+
+        let amount_out: u64;
+
+        // sell
+        if direction == 1 {
+            let denominator_sum = self
+                .reserve_token
+                .checked_add(adjusted_amount)
+                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
+
+            let div_amt = convert_to_float(denominator_sum, token_one_decimals)
+                .div(convert_to_float(adjusted_amount, token_one_decimals));
+
+            let amount_out_in_float = convert_to_float(self.reserve_lamport, 9 as u8).div(div_amt);
+
+            amount_out = convert_from_float(amount_out_in_float, 9 as u8);
+        } else {
+            // buy, sol for token
+            // y + dy sol
+            let denominator_sum = self
+                .reserve_lamport
+                .checked_add(adjusted_amount)
+                .ok_or(PumpfunError::OverflowOrUnderflowOccurred)?;
+
+            // (y + dy) / dy
+            let div_amt = convert_to_float(denominator_sum, token_one_decimals)
+                .div(convert_to_float(adjusted_amount, token_one_decimals));
+
+            // dx = x / ((y + dy) / dy)
+            // dx = xdy / (y + dy)
+            let amount_out_in_float = convert_to_float(self.reserve_token, 9 as u8).div(div_amt);
+
+            amount_out = convert_from_float(amount_out_in_float, 9 as u8);
+        }
+        Ok((adjusted_amount, amount_out))
     }
 }

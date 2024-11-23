@@ -1,7 +1,7 @@
 use crate::*;
-use std::ops::{Div, Mul};
 use anchor_spl::token;
 use solana_program::program::{invoke, invoke_signed};
+use std::ops::{Div, Mul};
 
 pub fn convert_to_float(value: u64, decimals: u8) -> f64 {
     (value as f64).div(f64::powf(10.0, decimals as f64))
