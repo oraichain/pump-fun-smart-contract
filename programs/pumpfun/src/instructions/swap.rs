@@ -95,24 +95,9 @@ pub struct Swap<'info> {
 
 pub fn swap(ctx: Context<Swap>, amount: u64, direction: u8, minimum_receive_amount: u64) -> Result<u64> {
     let bonding_curve = &mut ctx.accounts.bonding_curve;
+        
+    let source = &mut ctx.accounts.global_vault.to_account_info();
 
-    //  check curve is not completed
-
-    let token_one_accounts = (
-        &mut *ctx.accounts.token_mint.clone(),
-        &mut ctx.accounts.global_ata.to_account_info(),
-        &mut ctx.accounts.user_ata.to_account_info(),
-    );
-
-    let token_two_accounts = (
-        &mut ctx.accounts.global_vault.to_account_info(),
-        &mut ctx.accounts.user.to_account_info()
-    );
-
-    let team_wallet_accounts = (
-        &mut ctx.accounts.team_wallet.to_account_info(),
-        &mut ctx.accounts.team_wallet_ata.to_account_info()
-    );
 
     let token = &mut ctx.accounts.token_mint;
     let team_wallet = &mut ctx.accounts.team_wallet;
@@ -156,12 +141,15 @@ pub fn swap(ctx: Context<Swap>, amount: u64, direction: u8, minimum_receive_amou
         &[ctx.bumps.global_vault],
     ]];
 
+    
     let amount_out = bonding_curve.swap(
         &*ctx.accounts.global_config,
-        token_one_accounts,
-        token_two_accounts,
-        team_wallet_accounts,
-
+        token.as_ref(),
+        &mut ctx.accounts.global_ata,
+        user_ata,
+        source,
+        team_wallet,
+        team_wallet_ata,
         amount,
         direction,
         minimum_receive_amount,

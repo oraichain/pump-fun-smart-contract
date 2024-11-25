@@ -11,7 +11,9 @@ use crate::{
     constants::{BONDING_CURVE, CONFIG, GLOBAL},
     errors::PumpfunError,
     state::{BondingCurve, BondingCurveAccount, Config},
-    utils::{convert_from_float, convert_to_float, sol_transfer_with_signer, token_transfer_with_signer},
+    utils::{
+        convert_from_float, convert_to_float, sol_transfer_with_signer, token_transfer_with_signer,
+    },
 };
 
 #[derive(Accounts)]
@@ -232,42 +234,35 @@ pub fn migrate(ctx: Context<Migrate>, nonce: u8) -> Result<()> {
         bonding_curve.reserve_token,
         bonding_curve.reserve_lamport
     );
-    
-    msg!(
-        "Fee:: Token: {:?}  Sol: {:?}",
-        fee_lamport,
-        fee_token
-    );
 
-    let signer_seeds: &[&[&[u8]]] = &[&[
-        GLOBAL.as_bytes(),
-        &[ctx.bumps.global_vault],
-    ]];
+    msg!("Fee:: Token: {:?}  Sol: {:?}", fee_lamport, fee_token);
+
+    let signer_seeds: &[&[&[u8]]] = &[&[GLOBAL.as_bytes(), &[ctx.bumps.global_vault]]];
 
     //  transfer 0.33 SOL to signer for market id creation fee + tx fee
     sol_transfer_with_signer(
-        ctx.accounts.global_vault.to_account_info(),
+        ctx.accounts.global_vault.clone(),
         ctx.accounts.user_wallet.to_account_info(),
-        ctx.accounts.system_program.to_account_info(),
+        &ctx.accounts.system_program,
         signer_seeds,
         330_000_000,
     )?;
 
     //  transfer migration fee to team wallet
     sol_transfer_with_signer(
-        ctx.accounts.global_vault.to_account_info(),
-        ctx.accounts.team_wallet.to_account_info(),
-        ctx.accounts.system_program.to_account_info(),
+        ctx.accounts.global_vault.clone(),
+        ctx.accounts.team_wallet.clone(),
+        &ctx.accounts.system_program,
         signer_seeds,
-        fee_lamport
+        fee_lamport,
     )?;
     token_transfer_with_signer(
-        ctx.accounts.global_token_account.to_account_info(),
-        ctx.accounts.global_vault.to_account_info(),
-        ctx.accounts.team_ata.to_account_info(),
-        ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.global_token_account.clone(),
+        ctx.accounts.global_vault.clone(),
+        ctx.accounts.team_ata.clone(),
+        &ctx.accounts.token_program,
         signer_seeds,
-        fee_token
+        fee_token,
     )?;
 
     //  Running raydium amm initialize2

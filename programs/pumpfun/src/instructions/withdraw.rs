@@ -111,18 +111,18 @@ pub fn withdraw<'info>(
     ]];
 
     sol_transfer_with_signer(
-        ctx.accounts.global_vault.to_account_info(),
+        ctx.accounts.global_vault.clone(),
         ctx.accounts.admin.to_account_info(),
-        ctx.accounts.system_program.to_account_info(),
+        &ctx.accounts.system_program,
         signer_seeds,
         lamport_amount,
     )?;
 
     token_transfer_with_signer(
-        ctx.accounts.global_vault_ata.to_account_info(),
-        ctx.accounts.global_vault.to_account_info(),
-        ctx.accounts.admin_ata.to_account_info(),
-        ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.global_vault_ata.clone(),
+        ctx.accounts.global_vault.clone(),
+        ctx.accounts.admin_ata.clone(),
+        &ctx.accounts.token_program,
         signer_seeds,
         bonding_curve.reserve_token,
     )?;

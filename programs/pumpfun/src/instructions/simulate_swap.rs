@@ -24,13 +24,11 @@ pub struct SimulateSwap<'info> {
 pub fn simulate_swap(ctx: Context<SimulateSwap>, amount: u64, direction: u8) -> Result<u64> {
     let bonding_curve = &ctx.accounts.bonding_curve;
 
-    let token_one_accounts = (
-        &*ctx.accounts.token_mint.clone(),
-    );
+    
 
     let amount_out = bonding_curve.simulate_swap(
         &*ctx.accounts.global_config,
-        token_one_accounts,
+        ctx.accounts.token_mint.as_ref(),
 
         amount,
         direction,

@@ -90,13 +90,12 @@ pub trait BondingCurveAccount<'info> {
     fn swap(
         &mut self,
         global_config: &Account<'info, Config>,
-        token_one_accounts: (
-            &mut Account<'info, Mint>,
-            &mut AccountInfo<'info>,
-            &mut AccountInfo<'info>,
-        ),
-        token_two_accounts: (&mut AccountInfo<'info>, &mut AccountInfo<'info>),
-        team_wallet_accounts: (&mut AccountInfo<'info>, &mut AccountInfo<'info>),
+        token_mint: &Account<'info, Mint>,
+        global_ata: &mut AccountInfo<'info>,
+        user_ata: &mut AccountInfo<'info>,
+        source: &mut AccountInfo<'info>,
+        team_wallet: &mut AccountInfo<'info>,
+        team_wallet_ata: &mut AccountInfo<'info>,
         amount: u64,
         direction: u8,
         minimum_receive_amount: u64,
@@ -111,7 +110,7 @@ pub trait BondingCurveAccount<'info> {
     fn simulate_swap(
         &self,
         global_config: &Account<'info, Config>,
-        token_one_accounts: (&Account<'info, Mint>,),
+        token_mint: &Account<'info, Mint>,
         amount: u64,
         direction: u8,
     ) -> Result<u64>;
@@ -148,13 +147,14 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
     fn swap(
         &mut self,
         global_config: &Account<'info, Config>,
-        token_one_accounts: (
-            &mut Account<'info, Mint>,
-            &mut AccountInfo<'info>,
-            &mut AccountInfo<'info>,
-        ),
-        token_two_accounts: (&mut AccountInfo<'info>, &mut AccountInfo<'info>),
-        team_wallet_accounts: (&mut AccountInfo<'info>, &mut AccountInfo<'info>),
+
+        token_mint: &Account<'info, Mint>,
+        global_ata: &mut AccountInfo<'info>,
+        user_ata: &mut AccountInfo<'info>,
+
+        source: &mut AccountInfo<'info>,
+        team_wallet: &mut AccountInfo<'info>,
+        team_wallet_ata: &mut AccountInfo<'info>,
 
         amount: u64,
         direction: u8,
@@ -169,7 +169,9 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
         if amount <= 0 {
             return err!(PumpfunError::InvalidAmount);
         }
-        msg!("Mint: {:?} ", token_one_accounts.0.key());
+
+        //  check curve is not completed
+        msg!("Mint: {:?} ", token_mint.key());
         msg!("Swap: {:?} {:?} {:?}", user.key(), direction, amount);
 
         // xy = k => Constant product formula
@@ -182,7 +184,7 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
 
         let (adjusted_amount, amount_out) = self.cal_amount_out(
             amount,
-            token_one_accounts.0.decimals,
+            token_mint.decimals,
             direction,
             global_config.platform_sell_fee,
             global_config.platform_buy_fee,
@@ -206,17 +208,17 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
             self.update_reserves(global_config, new_reserves_one, new_reserves_two)?;
             msg! {"Reserves: {:?} {:?}", new_reserves_one, new_reserves_two}
             token_transfer_user(
-                token_one_accounts.2.to_account_info(),
-                user.to_account_info(),
-                token_one_accounts.1.to_account_info(),
-                token_program.to_account_info(),
+                user_ata.clone(),
+                &user,
+                global_ata.clone(),
+                &token_program,
                 adjusted_amount,
             )?;
 
             sol_transfer_with_signer(
-                token_two_accounts.0.to_account_info(),
-                token_two_accounts.1.to_account_info(),
-                system_program.to_account_info(),
+                source.clone(),
+                user.to_account_info(),
+                &system_program,
                 signer,
                 amount_out,
             )?;
@@ -227,10 +229,10 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
             msg! {"fee: {:?}", fee_amount}
 
             token_transfer_user(
-                token_one_accounts.2.to_account_info(),
-                user.to_account_info(),
-                team_wallet_accounts.1.to_account_info(),
-                token_program.to_account_info(),
+                user_ata.clone(),
+                &user,
+                team_wallet_ata.clone(),
+                &token_program,
                 fee_amount,
             )?;
         } else {
@@ -249,8 +251,8 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
 
             if is_completed == true {
                 emit!(CompleteEvent {
-                    user: token_two_accounts.1.key(),
-                    mint: token_one_accounts.0.key(),
+                    user: user.key(),
+                    mint: token_mint.key(),
                     bonding_curve: self.key()
                 });
             }
@@ -258,30 +260,20 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
             msg! {"Reserves: {:?} {:?}", new_reserves_one, new_reserves_two}
 
             token_transfer_with_signer(
-                token_one_accounts.1.to_account_info(),
-                token_two_accounts.0.to_account_info(),
-                token_one_accounts.2.to_account_info(),
-                token_program.to_account_info(),
+                global_ata.clone(),
+                source.clone(),
+                user_ata.clone(),
+                &token_program,
                 signer,
                 amount_out,
             )?;
 
-            sol_transfer_user(
-                token_two_accounts.1.to_account_info(),
-                token_two_accounts.0.to_account_info(),
-                system_program.to_account_info(),
-                amount,
-            )?;
+            sol_transfer_from_user(&user, source.clone(), &system_program, amount)?;
 
             //  transfer fee to team wallet, pegasus wallet
             let fee_amount = amount - adjusted_amount;
 
-            sol_transfer_user(
-                token_two_accounts.1.to_account_info(),
-                team_wallet_accounts.0.to_account_info(),
-                system_program.to_account_info(),
-                fee_amount,
-            )?;
+            sol_transfer_from_user(&user, team_wallet.clone(), &system_program, fee_amount)?;
         }
         Ok(amount_out)
     }
@@ -289,7 +281,7 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
     fn simulate_swap(
         &self,
         global_config: &Account<'info, Config>,
-        token_one_accounts: (&Account<'info, Mint>,),
+        token_mint: &Account<'info, Mint>,
         amount: u64,
         direction: u8,
     ) -> Result<u64> {
@@ -300,7 +292,7 @@ impl<'info> BondingCurveAccount<'info> for Account<'info, BondingCurve> {
         Ok(self
             .cal_amount_out(
                 amount,
-                token_one_accounts.0.decimals,
+                token_mint.decimals,
                 direction,
                 global_config.platform_sell_fee,
                 global_config.platform_buy_fee,

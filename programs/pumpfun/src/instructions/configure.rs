@@ -1,4 +1,9 @@
-use crate::{constants::{CONFIG, GLOBAL}, errors::*, state::Config, utils::sol_transfer_user};
+use crate::{
+    constants::{CONFIG, GLOBAL},
+    errors::*,
+    state::Config,
+    utils::sol_transfer_from_user,
+};
 use anchor_lang::{prelude::*, system_program, Discriminator};
 
 #[derive(Accounts)]
@@ -21,7 +26,7 @@ pub struct Configure<'info> {
         bump,
     )]
     pub global_vault: AccountInfo<'info>,
-    
+
     #[account(address = system_program::ID)]
     system_program: Program<'info, System>,
 }
@@ -77,11 +82,10 @@ pub fn configure<'info>(
         .copy_from_slice(serialized_config.as_slice());
 
     //  initialize global vault
-    sol_transfer_user(
-        ctx.accounts.payer.to_account_info(),
-        ctx.accounts.global_vault.to_account_info(),
-        ctx.accounts.system_program.to_account_info(),
-        890880
+    sol_transfer_from_user(
+        &ctx.accounts.payer,
+        ctx.accounts.global_vault.clone(),
+        &ctx.accounts.system_program,
+        890880,
     )
-
 }
